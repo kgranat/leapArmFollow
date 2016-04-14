@@ -59,7 +59,7 @@ float startPitch = 0;
                       {0,0,0,0,0},
                       {0,0,0,0,0}
                       };
-                      
+                 
    float[] fingersAvg = {0,0,0,0,0,0};      
 
 //xyz readings
@@ -91,7 +91,18 @@ int[] posAvg = {0,0,0};
   int wristAngleValTmp = 90;
   int deltaValTmp = 125;
 
+  int Leapx;
+  int Leapy;
+  int Leapz;
+  
+  int LeapTmpx;
+  int LeapTmpy;
+  int LeapTmpz;
 
+  int xValold;
+  int yValold;
+  int zValold;
+  
   byte[] xValBytes = intToBytes(xVal);
   byte[] yValBytes = intToBytes(yVal);
   byte[] zValBytes =  intToBytes(zVal);
@@ -112,7 +123,7 @@ void setup(){
   //sPort = new Serial(this, "COM139 ", 38400);
   
   
-  sPort = new Serial(this, "/dev/tty.usbserial-A501RW77", 38400);
+  sPort = new Serial(this, "/dev/tty.usbserial-A501RXQR", 38400);
  // sPort = new Serial(this, "/dev/tty.usbserial-A501RVZV", 38400);
   prevMillis = millis();
 }
@@ -136,6 +147,9 @@ void draw()
     
     // FINGERS
     int fingers = 0;
+    
+    
+    
     
     for(Finger finger : hand.getFingers())
     {
@@ -167,8 +181,7 @@ void draw()
       }
       
     }
-    
-        
+   
     
     
     
@@ -192,24 +205,24 @@ void draw()
   {
      fiveRead =1; 
      startPos = hand_stabilized;
-     println("FIVE!!");
-     gripperMode = 0;
+     //println("FIVE!!");
+     //gripperMode = 0;
      wristFlag = 0;
   }
   if(fingersAvg[0] == 1 & fiveRead ==1)
   {
      fiveRead =0; 
-     println("FIVE0000!!");
-     gripperMode = 0;
+    // println("FIVE0000!!");
+     //gripperMode = 0;
      wristFlag = 0;
   }
   
   
-     gripperMode = 0;
+     //gripperMode = 0;
   if(fingersAvg[2] == 1 )
   {
     
-     println("GRIP!!");
+     //println("GRIP!!");
      
     float xd = fingerPos[0].x-fingerPos[1].x;
     float yd = fingerPos[0].y-fingerPos[1].y;
@@ -218,84 +231,114 @@ void draw()
     
     //println(twoPointDiff);
      fiveRead =0; 
-     gripperMode = 1;
-     wristFlag = 0;
-    
-  }
+     
   
   wristMode = 0;
-  /*
-  if(fingersAvg[4] == 1 )
-  {
-    
-    if(wristFlag ==0)
-    {
-      startRoll = hand_roll;
-     wristFlag = 1; 
-    }
-    
-     println("WRIST!!");
-     float test = hand_roll - startRoll;
-    println("Roll:" + test);
-   // println(hand_pitch);
-    
-     fiveRead =0; 
-    wristMode = 1;
-    
-    
-  }
   
-  */
 
 
     
   }//end hand?
-  
-  
-  
-  
-  
-  
+ 
   currMillis = millis();
+  
+    xValold = xVal;
+    yValold = yVal;
+    zValold = zVal;
+  
+    LeapTmpx =int(hand_stabilized.x);
+    LeapTmpy =int(hand_stabilized.y);
+    LeapTmpz =int(hand_stabilized.z);
+      
+       if(abs(LeapTmpz - Leapz) > 15)
+      {
+       Leapz = LeapTmpz;
+        //println("zup");
+      }
+      
+      if(abs(LeapTmpx - Leapx) > 15)
+      {
+         Leapx = LeapTmpx;
+       // println("xup");
+      }  
+        
+      if(abs(LeapTmpy - Leapy) > 3)
+      {
+        Leapy = LeapTmpy;
+        //println("yup");
+      }
+      
+      
+      
+      
+       
+        xVal = int(map(Leapx, 0, 900, -300,300));
+        yVal = int(map(Leapz, 10, 75, 150,350));
+        zVal = int(map(Leapy, 450, 100, 75,350));
+ 
+       if (xVal < -300 || xVal > 300){
+       xVal = xValold;
+       }
+       
+       if (yVal < 150 || yVal > 350){
+       yVal = yValold;
+      
+       }
+       
+       if (zVal< 75 || zVal > 350){
+      
+       zVal = zValold;
+       }
+       
+       xVal = xVal +512;
+       
+       
+        Leapx = int(hand_stabilized.x);
+        Leapy = int(hand_stabilized.y);
+        Leapz = int(hand_stabilized.z); 
+       
+       
+     // if (sqrt((((xVal-xValold)^2)+((yVal-yValold)^2)+((zVal-zValold)^2))) > 10){
+        
+        //println("large movement");
+      //}
+      
+      //deltaVal = int(sqrt((((xVal-xValold)^2)+((yVal-yValold)^2)+((zVal-zValold)^2)))*25 + 10); 
+      
+      
+      
+       // println(xVal);
+        
+    
+     
+      
+      
+      
    
-  // println("moo " + currMillis + " " + fistState+ " " + fistStateLast);   
-  //  if ((currMillis - prevMillis > update) & !(fistState == 2 & fistStateLast ==0 )  & !(fistStateLast == 0 & fistState == 0)  )
+   float handRad = hand.getSphereRadius();
+       if ( handRad < 50 ){
+        gripperVal = 0;
+      
+        }
+      else{
+        gripperVal = 450;
+          }
+     
+     //gripperMode = 1;
+     wristFlag = 0;
+    
+  }
+  
+ 
+ gripperMode=1;
   if ((currMillis - prevMillis > update) & (fiveRead ==1 | gripperMode == 1| wristMode == 1))
   {
     
     if(gripperMode == 0 & wristMode == 0) 
     {
-      xValTmp = int(map(hand_stabilized.x, 0, 900, -300,300));
-      yValTmp = int(map(hand_stabilized.z, 10, 75, 50,350));
-      zValTmp = int(map(hand_stabilized.y, 450, 100, 75,350));
-   // } 
-
-//echo zValTmp;
-
-//zValTmp = 200;
-    //yValTmp = int(map(hand_stabilized.z, 10, 75, 50,350)); 
-    //=byte( 127 + mappedZ );
-       
-      if(abs(zValTmp - zVal) > 15)
-      {
-        zVal = zValTmp;
-       // println("zup");
-      }
-      
-      if(abs(xValTmp - xVal) > 15)
-      {
-        xVal = xValTmp;
-        //println("xup");
-      }  
-        
-      if(abs(yValTmp - yVal) > 3)
-      {
-        yVal = yValTmp;
-        //println("yup");
-      }
       
       
-      xVal = xVal +512;
+   
 
     }
 
@@ -305,8 +348,8 @@ void draw()
     twoPointDiff = max(twoPointDiff,40);
     twoPointDiff = min(twoPointDiff,110);
 
-    gripperVal = int(map(((twoPointDiff)), 40, 110, 0, 512)); 
-    println(gripperVal);
+   // gripperVal = int(map(((twoPointDiff)), 40, 110, 0, 512)); 
+    //println(gripperVal);
   }
 
 if(wristMode == 1 & (abs(hand_roll-startRoll) > 5 ) )
@@ -316,46 +359,9 @@ if(wristMode == 1 & (abs(hand_roll-startRoll) > 5 ) )
     wristVal = wristVal +int((hand_roll-startRoll));
     wristVal = max(wristVal,0);
     wristVal = min(wristVal,1023);
-    println(wristVal);
+   // println(wristVal);
 }
 
-
-
-
-
-/*
-int[] reactorNormalX = {0,-300,300};
-int[] reactorNormalY = {200,50,350};
-int[] reactorNormalZ = {200,20,250};
-int[] reactorNormalWristAngle = {0,-90,90};
-int[] reactorWristRotate = {0,-512,511};
-int[] reactorGripper = {256,0,512};
-int[] reactor90X = {0,-300,300};
-int[] reactor90Y = {150,20,140};
-int[] reactor90Z = {30,10,150};
-int[] reactor90WristAngle = {-90,-90,-45};
-int[] reactorBase = {512,0,1023};
-int[] reactorBHShoulder = {512,205,810};
-int[] reactorBHElbow = {512,210,900};
-int[] reactorBHWristAngle = {512,200,830};
-int[] reactorBHWristRot = {512,0,1023};
-
-*/
-
-    
-   // println(xVal + " " + yVal + " " + zVal + " " );
-
-   
-//zValTmp = 200;  
-//zVal = 200;    
-//yValTmp = 200;  
-//yVal = 200;    
-//xValTmp = 0;
-//xVal = 0;
-
-
-
-//
     xValBytes = intToBytes(xVal);
     yValBytes = intToBytes(yVal);
     zValBytes =  intToBytes(zVal);
@@ -363,6 +369,10 @@ int[] reactorBHWristRot = {512,0,1023};
     wristAngleValBytes =  intToBytes(wristAngleVal);
     gripperValBytes =  intToBytes(gripperVal);
     deltaValBytes =  intToBytes(deltaVal); 
+    
+  if (keyPressed) {
+    if (key == 'm') {
+      
     sPort.clear();
     sPort.write(0xff);          //header
     sPort.write(xValBytes[1]); //X Coord High Byte
@@ -396,7 +406,11 @@ int[] reactorBHWristRot = {512,0,1023};
     sPort.write((char)(255 - (xValBytes[1]+xValBytes[0]+yValBytes[1]+yValBytes[0]+zValBytes[1]+zValBytes[0]+wristAngleValBytes[1]+wristAngleValBytes[0]+wristRotValBytes[1]+wristRotValBytes[0]+gripperValBytes[1]+gripperValBytes[0]+deltaValBytes[0] + buttonByte+extValBytes[0])%256));  //checksum
   
     prevMillis = currMillis;
+    // }
+  //}
+  
   }//end serial packets 
+
 }
 void waitForArm()
 {
@@ -409,10 +423,10 @@ void waitForArm()
    {
       inBuffer = sPort.readBytes();
       sPort.readBytes(inBuffer);
-      println(inBuffer[0]);
+      //println(inBuffer[0]);
       if(inBuffer[0] == 70)
        {
-        println("return");
+        //println("return");
         return; 
        }
    }
@@ -424,12 +438,6 @@ void waitForArm()
 
 void shiftAvg()
 {
-  
-  
-    
-    
-    
-    
   
      // println("ff------------------");
     for(int j = 0; j <6; j++)
@@ -461,6 +469,3 @@ byte[] intToBytes(int convertInt)
   return(returnBytes);
   
 }
-
-
-
