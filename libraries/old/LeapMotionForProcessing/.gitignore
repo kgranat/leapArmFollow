@@ -1,0 +1,11 @@
+.DS_Store
+.svn
+.project
+.classpath
+.settings/
+distribution/
+lib/
+resources/
+web/
+src/development/
+bin/
