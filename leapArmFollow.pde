@@ -1,14 +1,75 @@
-//The Leapmotion DSK is now included when you so a normal leapmotion install and run the leap motion controller
-
-
+/***********************************************************************************
+ *  }--\     Leap Arm        /--{
+ *      |                    |
+ *   __/      \__/           \__
+ *  |__|      [__]           |__|
+ *
+ *
+ *
+ *
+ *    Requirements:
+ *
+ *
+ *
+ ************************************************************************************/
 
 import de.voidplus.leapmotion.*;  //import leap motion library to interface with leapmotion sdk
-import processing.serial.*; //import serial library to communicate with the ArbotiX
+import processing.serial.*; //import serial library to communicate with the ArbotiX -M
+import g4p_controls.*;      //import g4p library for GUI elements
+import java.awt.Font;       //import font
 
 
 Serial sPort;            //serial object 
-LeapMotion leap;
+LeapMotion leap;          //leap motion object
+
+
+int numSerialPorts = Serial.list().length;                 //Number of serial ports available at startup
+String[] serialPortString = new String[numSerialPorts+1];  //string array to the name of each serial port - used for populating the drop down menu
+int selectedSerialPort;                                    //currently selected port from serialList drop down
+Serial[] sPorts = new Serial[numSerialPorts];  //array of serial ports, one for each avaialable serial port.
+int armPortIndex = -1; //the index of the serial port that an arm is currently connected to(relative to the list of avaialble serial ports). -1 = no arm connected
+
+
+boolean debugConsole = true;      //change to 'false' to disable debuging messages to the console, 'true' to enable 
+boolean debugFile = false;        //change to 'false' to disable debuging messages to a file, 'true' to enable
+
+boolean debugGuiEvent = true;     //change to 'false' to disable GUI debuging messages, 'true' to enable
+boolean debugSerialEvent = false;     //change to 'false' to disable GUI debuging messages, 'true' to enable
+boolean debugFileCreated  = false;  //flag to see if the debug file has been created yet or not
+
+int packetRepsonseTimeout = 5000;      //time to wait for a response from the ArbotiX Robocontroller / Arm Link Protocol
+int startupWaitTime = 10000;    //time in ms for the program to wait for a response from the ArbotiX
+
+
+  //holds the data from the last packet sent
+  int lastX;
+  int lastY;
+  int lastZ;
+  int lastWristangle;
+  int lastWristRotate;
+  int lastGripper;
+  int lastButton;
+  int lastExtended;
+  int lastDelta;
+   
+   
+   
+int connectFlag = 0;
+int disconnectFlag = 0;
+int autoConnectFlag = 0;
+
+boolean updateFlag = false;     //trip flag, true when the program needs to send a serial packet at the next interval, used by both 'update' and 'autoUpdate' controls
+int updatePeriod = 33;          //minimum period between packet in Milliseconds , 33ms = 30Hz which is the standard for the commander/arm link protocol
+
+
+int currentArm = 0;          //ID of current arm. 1 = pincher, 2 = reactor, 3 = widowX, 5 = snapper
+int currentMode = 0;         //Current IK mode, 1=Cartesian, 2 = cylindrical, 3= backhoe
+int currentOrientation = 0;  //Current wrist oritnation 1 = straight/normal, 2=90 degrees
+
+
+
 PVector hand_stabilized;
+PVector hand_raw;
 int trip = 0;//trips whe a finder is detected
 int fistState = 0;//0 when nothing is present, 1 when 2-3 fingers, 2 for a hand, 3 for a fist
 int fistStateLast = 0;//0 when nothing is present, 1 when a fist is present, 2 when a hand is present, but so are fingers (not-a-fist)
@@ -113,31 +174,55 @@ int[] posAvg = {0,0,0};
   byte[] extValBytes = {0,0};
   byte buttonByte = 0;
 
-void setup(){
-  size(800, 500);
-  background(255);
-  noStroke(); fill(50);
-  // ...
-    
+void setup()
+{
+  //make window
+  size(1000, 1000, JAVA2D);
+  
+   createGUI();   //draw GUI components defined in gui.pde
+
+  //Build Serial Port List
+  serialPortString[0] = "Serial Port";   //first item in the list will be "Serial Port" to act as a label
+  //iterate through each avaialable serial port  
+  for (int i=0; i<numSerialPorts; i++) 
+  {
+    serialPortString[i+1] = Serial.list()[i];  //add the current serial port to the list, add one to the index to account for the first item/label "Serial Port"
+  }
+  serialList.setItems(serialPortString, 0);  //add contents of srialPortString[] to the serialList GUI    
+
+
+
+  
+  //init leapmotion object
   leap = new LeapMotion(this);
-  //sPort = new Serial(this, "COM139 ", 38400);
-  
-  
-  sPort = new Serial(this, "/dev/tty.usbserial-A501RXQR", 38400);
- // sPort = new Serial(this, "/dev/tty.usbserial-A501RVZV", 38400);
+
   prevMillis = millis();
-}
+}//end setup
 
 void draw()
 {
-  background(255);
-   
-  handRead = 0; 
+  
+  background(205,128,128);//draw background color
+ 
+  handleConnect();
+  handleDisconnect();
+  handleAutoConnect();
+  
+  
+  handRead = 0; //start by assuming no hand has been read
+  
+  //read each hand
   for(Hand hand : leap.getHands())
   {
-    hand_stabilized  = hand.getStabilizedPosition();
-    handRead = 1;
     
+    hand.draw();
+    
+    hand_stabilized  = hand.getStabilizedPosition();  //get position -stabalized? What kind of filtering does this use?
+    hand_raw = hand.getPosition();
+    
+    handRead = 1;
+
+    //get pitch and roll
     hand_roll        = hand.getRoll();
     hand_pitch       = hand.getPitch();
     /*
@@ -146,31 +231,23 @@ void draw()
     */
     
     // FINGERS
-    int fingers = 0;
-    
-    
-    
-    
+    int fingers = 0;//assume 0 fingers
     for(Finger finger : hand.getFingers())
     {
-      
+      //add one for each finger we find
       fingerPos[fingers] = finger.getStabilizedPosition();
       fingers++;
     }
-    
-    
+       
     shiftAvg();//shift the average back one
     
     
-    
-    
-    
     //update last reading
+    //not sure what I was doing here
     for(int j = 0; j <6; j++)
     {
       if (fingers == j)
       {
-        
         fingerReadings[j][4] = 1;
       }
       else
@@ -181,12 +258,14 @@ void draw()
       }
       
     }
+    
+    
    
     
     
     
-    //sum aveage 
-    
+    //sum average
+    //again, what am I doing?
     for(int j = 0; j <6; j++)
     {
       fingersAvg[j] = 0;    
@@ -234,23 +313,34 @@ void draw()
      
   
   wristMode = 0;
-  
-
-
-    
+      
   }//end hand?
  
-  currMillis = millis();
+    currMillis = millis(); //get the time
   
+    //store xyz away
     xValold = xVal;
     yValold = yVal;
     zValold = zVal;
   
+    //should we be doing something here incase another hand shows up?
+    //also, shouldn't all of this be in the hand:hand for loop?
+    //LeapTmpx =int(hand_raw.x);
+    //LeapTmpy =int(hand_raw.y);
+    //LeapTmpz =int(hand_raw.z);
     LeapTmpx =int(hand_stabilized.x);
     LeapTmpy =int(hand_stabilized.y);
     LeapTmpz =int(hand_stabilized.z);
       
-       if(abs(LeapTmpz - Leapz) > 15)
+    //leapXText.setText(Integer.toString(int(hand_raw.x)));  
+    //leapYText.setText(Integer.toString(int(hand_raw.y)));  
+    //leapZText.setText(Integer.toString(int(hand_raw.z)));  
+    leapXText.setText(Integer.toString(LeapTmpx));  
+    leapYText.setText(Integer.toString(LeapTmpy));  
+    leapZText.setText(Integer.toString(LeapTmpz));  
+      
+      //deabands
+      if(abs(LeapTmpz - Leapz) > 15)
       {
        Leapz = LeapTmpz;
         //println("zup");
@@ -271,22 +361,25 @@ void draw()
       
       
       
-       
-        xVal = int(map(Leapx, 0, 900, -300,300));
-        yVal = int(map(Leapz, 10, 75, 150,350));
-        zVal = int(map(Leapy, 450, 100, 75,350));
+       //generate xyz values from leapmotion values
+        xVal = int(map(Leapx, 0, 1000, xParameters[1],xParameters[2]));
+        yVal = int(map(Leapz, -20, 80, yParameters[1],yParameters[2]));
+        zVal = int(map(Leapy, 832, 200, zParameters[1],zParameters[2]));
+        print("y");
+        
  
-       if (xVal < -300 || xVal > 300){
+       if (xVal<xParameters[1] || xVal>xParameters[2]){
        xVal = xValold;
        }
        
-       if (yVal < 150 || yVal > 350){
+       if (yVal<yParameters[1] || yVal>yParameters[2]){
        yVal = yValold;
       
        }
        
-       if (zVal< 75 || zVal > 350){
-      
+       if (zVal<zParameters[1] || zVal>zParameters[2]){
+         
+         
        zVal = zValold;
        }
        
@@ -311,7 +404,6 @@ void draw()
         
     
      
-      
       
       
    
@@ -373,43 +465,52 @@ if(wristMode == 1 & (abs(hand_roll-startRoll) > 5 ) )
   if (keyPressed) {
     if (key == 'm') {
       
-    sPort.clear();
-    sPort.write(0xff);          //header
-    sPort.write(xValBytes[1]); //X Coord High Byte
-    sPort.write(xValBytes[0]); //X Coord Low Byte
+     sendCommanderPacketWithCheck(xVal, yVal, zVal, wristAngleVal, wristVal, gripperVal, deltaVal, 0, 0);
+
     
-    sPort.write(yValBytes[1]); //Y Coord High Byte
-    sPort.write(yValBytes[0]); //Y Coord Low Byte
+    //sPort.clear();
+    //sPort.write(0xff);          //header
+    //sPort.write(xValBytes[1]); //X Coord High Byte
+    //sPort.write(xValBytes[0]); //X Coord Low Byte
+    ////println(xValBytes[1]);
+    ////println(xValBytes[0]);
     
-    sPort.write(zValBytes[1]); //Z Coord High Byte
-    sPort.write(zValBytes[0]); //Z Coord Low Byte
+
+    //sPort.write(yValBytes[1]); //Y Coord High Byte
+    //sPort.write(yValBytes[0]); //Y Coord Low Byte
     
-     // println("mid write"+ millis());
-    sPort.write(wristAngleValBytes[1]); //Wrist Angle High Byte
-    sPort.write(wristAngleValBytes[0]); //Wrist Angle Low Byte
+    //sPort.write(zValBytes[1]); //Z Coord High Byte
+    //sPort.write(zValBytes[0]); //Z Coord Low Byte
     
-    sPort.write(wristRotValBytes[1]); //Wrist Rotate High Byte
-    sPort.write(wristRotValBytes[0]); //Wrist Rotate Low Byte
+    // // println("mid write"+ millis());
+    //sPort.write(wristAngleValBytes[1]); //Wrist Angle High Byte
+    //sPort.write(wristAngleValBytes[0]); //Wrist Angle Low Byte
     
-    sPort.write(gripperValBytes[1]); //Gripper High Byte
-    sPort.write(gripperValBytes[0]); //Gripper Low Byte
+    //sPort.write(wristRotValBytes[1]); //Wrist Rotate High Byte
+    //sPort.write(wristRotValBytes[0]); //Wrist Rotate Low Byte
     
-    
-    
-    sPort.write(deltaValBytes[0]); //Delta Low Byte
-    
-    sPort.write(buttonByte); //Button byte
-    
-    sPort.write(extValBytes[0]); //Extended instruction
+    //sPort.write(gripperValBytes[1]); //Gripper High Byte
+    //sPort.write(gripperValBytes[0]); //Gripper Low Byte
     
     
-    sPort.write((char)(255 - (xValBytes[1]+xValBytes[0]+yValBytes[1]+yValBytes[0]+zValBytes[1]+zValBytes[0]+wristAngleValBytes[1]+wristAngleValBytes[0]+wristRotValBytes[1]+wristRotValBytes[0]+gripperValBytes[1]+gripperValBytes[0]+deltaValBytes[0] + buttonByte+extValBytes[0])%256));  //checksum
+    
+    //sPort.write(deltaValBytes[0]); //Delta Low Byte
+    
+    //sPort.write(buttonByte); //Button byte
+    
+    //sPort.write(extValBytes[0]); //Extended instruction
+    
+    
+    //sPort.write((char)(255 - (xValBytes[1]+xValBytes[0]+yValBytes[1]+yValBytes[0]+zValBytes[1]+zValBytes[0]+wristAngleValBytes[1]+wristAngleValBytes[0]+wristRotValBytes[1]+wristRotValBytes[0]+gripperValBytes[1]+gripperValBytes[0]+deltaValBytes[0] + buttonByte+extValBytes[0])%256));  //checksum
   
     prevMillis = currMillis;
-    // }
-  //}
+     }
+  }
   
   }//end serial packets 
+
+
+
 
 }
 void waitForArm()
@@ -457,15 +558,5 @@ void shiftAvg()
   
       //println("ff------------------");
       
-  
-}
-
-byte[] intToBytes(int convertInt)
-{
-  byte[] returnBytes = new byte[2]; // array that holds the returned data from the registers only 
-  byte mask = byte(0xff);
-  returnBytes[0] =byte(convertInt & mask);//low byte
-  returnBytes[1] =byte((convertInt>>8) & mask);//high byte
-  return(returnBytes);
   
 }
