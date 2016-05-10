@@ -41,6 +41,7 @@ GButton orient90Button, orientStraightButton; //buttons to chage IK mode
 GLabel statusLabel;
 
 GButton emergencyStopButton;
+GLabel startButton;
 
 GLabel leapXLabel, leapYLabel, leapZLabel;
 
@@ -195,16 +196,24 @@ public void controlPanel_click(GPanel source, GEvent event) { //_CODE_:controlPa
 
 
 
-public void emergencyStopButton_click(GButton source, GEvent event) 
-{
-  sendCommanderPacket(0, 0, 0, 0, 0, 0, 0, 0, 17);    //send a commander style packet - the first 8 bytes are inconsequntial, only the last byte matters. '17' is the extended byte that will stop the arm
-  updateFlag = false;
-  autoUpdateCheckbox.setSelected(false);
-  emergencyStopMessageDialog();
+//public void emergencyStopButton_click(GButton source, GEvent event) 
+//{
+//  sendCommanderPacket(0, 0, 0, 0, 0, 0, 0, 0, 17);    //send a commander style packet - the first 8 bytes are inconsequntial, only the last byte matters. '17' is the extended byte that will stop the arm
+//  updateFlag = false;
+//  autoUpdateCheckbox.setSelected(false);
+//  emergencyStopMessageDialog();
   
-}
-  
+//}
 
+  
+//public void startButton_click(GButton source, GEvent event) 
+//{
+//  sendCommanderPacketWithCheck(xVal, yVal, zVal, wristAngleVal, wristVal, gripperVal, deltaVal, 0, 0);   //send a commander style packet - the first 8 bytes are inconsequntial, only the last byte matters. '17' is the extended byte that will stop the arm
+//  updateFlag = false;
+//  autoUpdateCheckbox.setSelected(false);
+//  //emergencyStopMessageDialog();
+  
+//}
 
 
 // Create all the GUI controls. 
@@ -220,7 +229,7 @@ public void createGUI() {
 
 //Setup
 
-  setupPanel = new GPanel(this, 5, 50, 465, 50, "Setup Panel");
+  setupPanel = new GPanel(this, 5, 480, 465, 50, "Setup Panel");
   setupPanel.setText("Setup Panel");
   setupPanel.setLocalColorScheme(GCScheme.BLUE_SCHEME);
   setupPanel.setOpaque(true);
@@ -283,7 +292,7 @@ public void createGUI() {
 
 
 //control
-  controlPanel = new GPanel(this, 5, 105, 265, 475, "Control Panel");
+  controlPanel = new GPanel(this, 5, 535, 350, 475, "Control Panel");
   controlPanel.setText("Control Panel");
   controlPanel.setLocalColorScheme(GCScheme.BLUE_SCHEME);
   controlPanel.setOpaque(true);
@@ -314,7 +323,7 @@ public void createGUI() {
 
  
 
-  autoUpdateCheckbox = new GCheckbox(this, 105, 454, 100, 20);
+  autoUpdateCheckbox = new GCheckbox(this, 105, 3000, 100, 20);
   autoUpdateCheckbox.setOpaque(false);
   autoUpdateCheckbox.addEventHandler(this, "autoUpdateCheckbox_change");
   autoUpdateCheckbox.setText("Auto Update");
@@ -322,42 +331,80 @@ public void createGUI() {
  
   
   
-  emergencyStopButton = new GButton(this, 5, 440, 150, 30);
-  emergencyStopButton.setText("EMERGENCY STOP");
-  emergencyStopButton.addEventHandler(this, "emergencyStopButton_click"); 
-  emergencyStopButton.setLocalColorScheme(GCScheme.RED_SCHEME);
+  //emergencyStopButton = new GButton(this, 5, 440, 150, 30);
+  //emergencyStopButton.setText("EMERGENCY STOP");
+  //emergencyStopButton.addEventHandler(this, "emergencyStopButton_click"); 
+  //emergencyStopButton.setLocalColorScheme(GCScheme.RED_SCHEME);
  
+  startButton = new GLabel(this, 90, 200, 200, 100);
+  startButton.setText("Press Space Bar to Stop");
+  //startButton.addEventHandler(this, "emergencyStopButton_click"); 
+  startButton.setLocalColorScheme(GCScheme.RED_SCHEME);
+  startButton.setFont(new Font("Dialog", Font.PLAIN, 20));
 
   
-  leapXLabel = new GLabel(this, 5, 25, 50, 25);
+  leapXLabel = new GLabel(this, 5, 25, 70, 35);
   leapXLabel.setTextAlign(GAlign.LEFT, GAlign.MIDDLE);
-  leapXLabel.setText("X:");
-  leapXLabel.setFont(new Font("Dialog", Font.PLAIN, 12)); 
+  leapXLabel.setText("Leap X:");
+  leapXLabel.setFont(new Font("Dialog", Font.PLAIN, 18)); 
   
-  leapXText = new GTextField(this, 60, 25, 60, 20, G4P.SCROLLBARS_NONE);
+  leapXText = new GTextField(this, 90, 30, 60, 20, G4P.SCROLLBARS_NONE);
   leapXText.setText("0");
   leapXText.setLocalColorScheme(GCScheme.BLUE_SCHEME);
   leapXText.setOpaque(true);
   
-  leapYLabel = new GLabel(this, 5, 50, 50, 25);
+  leapYLabel = new GLabel(this, 5, 60, 70, 35);
   leapYLabel.setTextAlign(GAlign.LEFT, GAlign.MIDDLE);
-  leapYLabel.setText("Y:");
-  leapYLabel.setFont(new Font("Dialog", Font.PLAIN, 12)); 
+  leapYLabel.setText("Leap Y:");
+  leapYLabel.setFont(new Font("Dialog", Font.PLAIN, 18)); 
   
-  leapYText = new GTextField(this, 60, 50, 60, 20, G4P.SCROLLBARS_NONE);
+  leapYText = new GTextField(this, 90, 60, 60, 20, G4P.SCROLLBARS_NONE);
   leapYText.setText("0");
   leapYText.setLocalColorScheme(GCScheme.BLUE_SCHEME);
   leapYText.setOpaque(true);
   
-  leapZLabel = new GLabel(this, 5, 75, 50, 25);
+  leapZLabel = new GLabel(this, 5, 85, 70, 35);
   leapZLabel.setTextAlign(GAlign.LEFT, GAlign.MIDDLE);
-  leapZLabel.setText("Z:");
-  leapZLabel.setFont(new Font("Dialog", Font.PLAIN, 12)); 
+  leapZLabel.setText("Leap Z:");
+  leapZLabel.setFont(new Font("Dialog", Font.PLAIN, 18)); 
   
-  leapZText = new GTextField(this, 60,75, 60, 20, G4P.SCROLLBARS_NONE);
+  leapZText = new GTextField(this, 90,90, 60, 20, G4P.SCROLLBARS_NONE);
   leapZText.setText("0");
   leapZText.setLocalColorScheme(GCScheme.BLUE_SCHEME);
   leapZText.setOpaque(true);
+  
+  
+  armXLabel = new GLabel(this, 5, 115, 100, 35);
+  armXLabel.setTextAlign(GAlign.LEFT, GAlign.MIDDLE);
+  armXLabel.setText("Pincher X:");
+  armXLabel.setFont(new Font("Dialog", Font.PLAIN, 18)); 
+  
+  armXText = new GTextField(this, 100, 125, 60, 20, G4P.SCROLLBARS_NONE);
+  armXText.setText("0");
+  armXText.setLocalColorScheme(GCScheme.BLUE_SCHEME);
+  armXText.setOpaque(true);
+  
+  armYLabel = new GLabel(this, 5, 140, 100, 35);
+  armYLabel.setTextAlign(GAlign.LEFT, GAlign.MIDDLE);
+  armYLabel.setText("Pincher Y:");
+  armYLabel.setFont(new Font("Dialog", Font.PLAIN, 18)); 
+  
+  armYText = new GTextField(this, 100, 150, 60, 20, G4P.SCROLLBARS_NONE);
+  armYText.setText("0");
+  armYText.setLocalColorScheme(GCScheme.BLUE_SCHEME);
+  armYText.setOpaque(true);
+  
+  armZLabel = new GLabel(this, 5, 170, 100, 35);
+  armZLabel.setTextAlign(GAlign.LEFT, GAlign.MIDDLE);
+  armZLabel.setText("Pincher Z:");
+  armZLabel.setFont(new Font("Dialog", Font.PLAIN, 18)); 
+  
+  armZText = new GTextField(this, 100,175, 60, 20, G4P.SCROLLBARS_NONE);
+  armZText.setText("0");
+  armZText.setLocalColorScheme(GCScheme.BLUE_SCHEME);
+  armZText.setOpaque(true);
+  
+  
   
   
 //  leapXText.addEventHandler(this, "xTextField_change");
@@ -365,7 +412,8 @@ public void createGUI() {
   
   //controlPanel.addControl(xTextField);
   
-   controlPanel.addControl(emergencyStopButton);
+   //controlPanel.addControl(emergencyStopButton);
+   controlPanel.addControl(startButton);
    controlPanel.addControl(autoUpdateCheckbox);
    controlPanel.addControl(leapXLabel);
    controlPanel.addControl(leapXText);
@@ -373,6 +421,13 @@ public void createGUI() {
    controlPanel.addControl(leapYText);
    controlPanel.addControl(leapZLabel);
    controlPanel.addControl(leapZText);
+   controlPanel.addControl(armXLabel);
+   controlPanel.addControl(armXText);
+   controlPanel.addControl(armYLabel);
+   controlPanel.addControl(armYText);
+   controlPanel.addControl(armZLabel);
+   controlPanel.addControl(armZText);
+   
 
 
 

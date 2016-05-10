@@ -37,7 +37,7 @@ boolean debugGuiEvent = true;     //change to 'false' to disable GUI debuging me
 boolean debugSerialEvent = false;     //change to 'false' to disable GUI debuging messages, 'true' to enable
 boolean debugFileCreated  = false;  //flag to see if the debug file has been created yet or not
 
-int packetRepsonseTimeout = 5000;      //time to wait for a response from the ArbotiX Robocontroller / Arm Link Protocol
+int packetRepsonseTimeout = 5000;      //time to wait for a response from the ArbotiX Roboler / Arm Link Protocol
 int startupWaitTime = 10000;    //time in ms for the program to wait for a response from the ArbotiX
 
 
@@ -58,7 +58,7 @@ int connectFlag = 0;
 int disconnectFlag = 0;
 int autoConnectFlag = 0;
 
-boolean updateFlag = false;     //trip flag, true when the program needs to send a serial packet at the next interval, used by both 'update' and 'autoUpdate' controls
+boolean updateFlag = false;     //trip flag, true when the program needs to send a serial packet at the next interval, used by both 'update' and 'autoUpdate' s
 int updatePeriod = 33;          //minimum period between packet in Milliseconds , 33ms = 30Hz which is the standard for the commander/arm link protocol
 
 
@@ -177,7 +177,7 @@ int[] posAvg = {0,0,0};
 void setup()
 {
   //make window
-  size(1000, 1000, JAVA2D);
+  size(1500, 1000, JAVA2D);
   
    createGUI();   //draw GUI components defined in gui.pde
 
@@ -202,7 +202,19 @@ void setup()
 void draw()
 {
   
-  background(205,128,128);//draw background color
+  background(225);//draw background color
+ 
+  if (leap.hasImages()) {
+    for (Image camera : leap.getImages()) {
+      if (camera.isLeft()) {
+        // Left camera
+        image(camera, 0, 0);
+      } else {
+        // Right camera
+        image(camera, 0, camera.getHeight());
+      }
+    }
+  }
  
   handleConnect();
   handleDisconnect();
@@ -337,7 +349,16 @@ void draw()
     //leapZText.setText(Integer.toString(int(hand_raw.z)));  
     leapXText.setText(Integer.toString(LeapTmpx));  
     leapYText.setText(Integer.toString(LeapTmpy));  
-    leapZText.setText(Integer.toString(LeapTmpz));  
+    leapZText.setText(Integer.toString(LeapTmpz)); 
+    
+    armXText.setText(Integer.toString(xVal));  
+    armYText.setText(Integer.toString(yVal));  
+    armZText.setText(Integer.toString(zVal)); 
+     
+    
+    LeapTmpx =int(hand_stabilized.x);
+    LeapTmpy =int(hand_stabilized.y);
+    LeapTmpz =int(hand_stabilized.z);
       
       //deabands
       if(abs(LeapTmpz - Leapz) > 15)
@@ -359,36 +380,34 @@ void draw()
       }
       
       
-      
+     //store old values
+   
       
        //generate xyz values from leapmotion values
-        xVal = int(map(Leapx, 0, 1000, xParameters[1],xParameters[2]));
+        xVal = int(map(Leapx, 0, 800, xParameters[1],xParameters[2]));
         yVal = int(map(Leapz, -20, 80, yParameters[1],yParameters[2]));
-        zVal = int(map(Leapy, 832, 200, zParameters[1],zParameters[2]));
-        print("y");
-        
+        zVal = int(map(Leapy, 832, 200, 70,zParameters[2]));
+       
+        xVal = xVal +512;
  
-       if (xVal<xParameters[1] || xVal>xParameters[2]){
+       if (xVal<300||xVal>600){
        xVal = xValold;
        }
        
-       if (yVal<yParameters[1] || yVal>yParameters[2]){
+       if (yVal<150 || yVal>250){
        yVal = yValold;
       
        }
        
-       if (zVal<zParameters[1] || zVal>zParameters[2]){
+       if (zVal<70 || zVal>240){
          
          
        zVal = zValold;
        }
        
-       xVal = xVal +512;
-       
-       
         Leapx = int(hand_stabilized.x);
-        Leapy = int(hand_stabilized.y);
-        Leapz = int(hand_stabilized.z); 
+        Leapy = int(hand_stabilized.z);
+        Leapz = int(hand_stabilized.y); 
        
        
      // if (sqrt((((xVal-xValold)^2)+((yVal-yValold)^2)+((zVal-zValold)^2))) > 10){
@@ -400,7 +419,7 @@ void draw()
       
       
       
-       // println(xVal);
+        //println(deltaVal);
         
     
      
@@ -457,14 +476,16 @@ if(wristMode == 1 & (abs(hand_roll-startRoll) > 5 ) )
     xValBytes = intToBytes(xVal);
     yValBytes = intToBytes(yVal);
     zValBytes =  intToBytes(zVal);
-    wristRotValBytes =  intToBytes(wristVal);
+    //wristRot  ValBytes =  intToBytes(wristVal);
     wristAngleValBytes =  intToBytes(wristAngleVal);
     gripperValBytes =  intToBytes(gripperVal);
     deltaValBytes =  intToBytes(deltaVal); 
     
-  if (keyPressed) {
-    if (key == 'm') {
-      
+  if ( key == ' ') {
+  sendCommanderPacket(0, 0, 0, 0, 0, 0, 0, 0, 17);   
+  return;
+  }
+  else {  
      sendCommanderPacketWithCheck(xVal, yVal, zVal, wristAngleVal, wristVal, gripperVal, deltaVal, 0, 0);
 
     
@@ -505,7 +526,7 @@ if(wristMode == 1 & (abs(hand_roll-startRoll) > 5 ) )
   
     prevMillis = currMillis;
      }
-  }
+  
   
   }//end serial packets 
 
